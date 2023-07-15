@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Mobil;
 use App\Utils\HttpResponse;
+use App\Utils\Pagination;
 
 class MobilController extends Controller
 {
@@ -23,11 +24,11 @@ class MobilController extends Controller
   public function index()
   {
     try {
-      $exits = Mobil::all();
-      if (!$exits) {
-        return HttpResponse::not_found();
+      $request = request()->all();
+      if(isset($request['search'])) {
+        return Pagination::initWithSearch(Mobil::class, $request, ['merk', 'plat_nomer', 'kapasitas', 'warna', 'status']);
       }
-      return HttpResponse::success($exits);
+      return Pagination::init(Mobil::class, request()->all());
     } catch (\Throwable $th) {
       return HttpResponse::not_found($th->getMessage());
     }
@@ -59,10 +60,10 @@ class MobilController extends Controller
       }
       $this->validate($request, $this->rules);
       $response = Mobil::where('id', $id)->update([
-        'nama' => $request->nama,
+        'merk' => $request->merk,
+        'plat_nomer' => $request->plat_nomer,
         'kapasitas' => $request->kapasitas,
-        'lokasi' => $request->lokasi,
-        'deskripsi' => $request->deskripsi,
+        'warna' => $request->warna,
         'status' => $request->status
       ]);
       return HttpResponse::success($response, 'Data updated');

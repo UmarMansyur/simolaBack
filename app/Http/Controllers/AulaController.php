@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Aula;
 use App\Utils\HttpResponse;
+use App\Utils\Pagination;
 
 class AulaController extends Controller
 {
@@ -23,13 +24,13 @@ class AulaController extends Controller
   public function index()
   {
     try {
-      $exits = Aula::all();
-      if (!$exits) {
-        return HttpResponse::not_found();
+      $request = request()->all();
+      if(isset($request['search'])) {
+        return Pagination::initWithSearch(Aula::class, $request, ['nama', 'kapasitas', 'lokasi', 'deskripsi', 'status']);
       }
-      return HttpResponse::success($exits);
+      return Pagination::init(Aula::class, request()->all());
     } catch (\Throwable $th) {
-      return HttpResponse::not_found($th->getMessage());
+      return HttpResponse::error($th->getMessage());
     }
   }
 

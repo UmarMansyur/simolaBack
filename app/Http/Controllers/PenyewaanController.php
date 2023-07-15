@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Penyewaan;
 use App\Utils\HttpResponse;
+use App\Utils\Pagination;
 use Illuminate\Http\Request;
 
 class PenyewaanController extends Controller
@@ -12,6 +13,7 @@ class PenyewaanController extends Controller
   public function __construct()
   {
     $this->rules = [
+      'kegiatan' => 'required|string',
       'tanggal_pengajuan' => 'date',
       'penanggung_jawab' => 'required|string',
       'asal_surat' => 'required|string',
@@ -27,11 +29,11 @@ class PenyewaanController extends Controller
   public function index()
   {
     try {
-      $exist = Penyewaan::all();
-      if (!$exist) {
-        return HttpResponse::not_found();
+      $request = request()->all();
+      if (isset($request['search'])) {
+        return Pagination::initWithSearch(Penyewaan::class, $request, ['kegiatan', 'tanggal_pengajuan', 'penanggung_jawab', 'asal_surat', 'jenis_surat', 'type', 'tanggal_mulai', 'tanggal_selesai', 'lampiran']);
       }
-      return HttpResponse::success($exist);
+      return Pagination::init(Penyewaan::class, request()->all());
     } catch (\Throwable $th) {
       return HttpResponse::not_found($th->getMessage());
     }
@@ -41,20 +43,26 @@ class PenyewaanController extends Controller
   {
     try {
       $this->validate($request, $this->rules);
-      $exist = Penyewaan::where('tanggal_mulai', '<=', $request->tanggal_mulai)
-        ->where('tanggal_selesai', '>=', $request->tanggal_mulai)
-        ->orWhere('tanggal_mulai', '<=', $request->tanggal_selesai)
-        ->where('tanggal_selesai', '>=', $request->tanggal_selesai)
+      $exist = Penyewaan::where(function ($query) use ($request) {
+        $query->where('tanggal_mulai', '<=', $request->tanggal_mulai)
+          ->where('tanggal_selesai', '>=', $request->tanggal_mulai);
+      })
+        ->orWhere(function ($query) use ($request) {
+          $query->where('tanggal_mulai', '<=', $request->tanggal_selesai)
+            ->where('tanggal_selesai', '>=', $request->tanggal_selesai);
+        })
+        ->where('jenis_surat', $request->jenis_surat)
         ->first();
 
       if ($exist) {
-        return HttpResponse::error('Rental is not available');
+        return HttpResponse::error('Penyewaan sudah ada');
       }
 
       $file = $request->file('lampiran');
       $lampiran = $this->uploadFile($file);
 
       $response = Penyewaan::create([
+        'kegiatan' => $request->kegiatan,
         'tanggal_pengajuan' => $request->tanggal_pengajuan,
         'penanggung_jawab' => $request->penanggung_jawab,
         'asal_surat' => $request->asal_surat,
@@ -64,7 +72,7 @@ class PenyewaanController extends Controller
         'tanggal_selesai' => $request->tanggal_selesai,
         'lampiran' => $lampiran
       ]);
-      return HttpResponse::success($response);
+      return HttpResponse::success($response, 'Penyewaan berhasil ditambahkan');
     } catch (\Throwable $th) {
       return HttpResponse::error($th->getMessage());
     }
@@ -88,16 +96,6 @@ class PenyewaanController extends Controller
     try {
       $this->validate($request, $this->rules);
 
-      $exist = Penyewaan::where('tanggal_mulai', '<=', $request->tanggal_mulai)
-        ->where('tanggal_selesai', '>=', $request->tanggal_mulai)
-        ->orWhere('tanggal_mulai', '<=', $request->tanggal_selesai)
-        ->where('tanggal_selesai', '>=', $request->tanggal_selesai)
-        ->first();
-
-      if ($exist) {
-        return HttpResponse::error('Rental is not available');
-      }
-
       $exist = Penyewaan::find($id);
       if (!$exist) {
         return HttpResponse::not_found();
@@ -115,9 +113,10 @@ class PenyewaanController extends Controller
         'type' => $request->type,
         'tanggal_mulai' => $request->tanggal_mulai,
         'tanggal_selesai' => $request->tanggal_selesai,
-        'lampiran' => $lampiran
+        'lampiran' => $lampiran,
+        'kegiatan' => $request->kegiatan
       ]);
-      return HttpResponse::success($exist);
+      return HttpResponse::success($exist, 'Penyewaan berhasil diubah');
     } catch (\Throwable $th) {
       return HttpResponse::error($th->getMessage());
     }
@@ -137,8 +136,9 @@ class PenyewaanController extends Controller
     }
   }
 
-  public function uploadFile($file) {
-    if($file) {
+  public function uploadFile($file)
+  {
+    if ($file) {
       $fileName = time() . '.' . $file->getClientOriginalExtension();
       $file->move('uploads', $fileName);
       return "/uploads/" . $fileName;
@@ -146,12 +146,13 @@ class PenyewaanController extends Controller
     return null;
   }
 
-  public function deletedFile($file) {
-    if($file) {
+  public function deletedFile($file)
+  {
+    if ($file) {
       $fileName = explode('/', $file);
       $fileName = $fileName[count($fileName) - 1];
       $path = "/uploads/" . $fileName;
-      if(file_exists($path)) {
+      if (file_exists($path)) {
         unlink($path);
       }
     }

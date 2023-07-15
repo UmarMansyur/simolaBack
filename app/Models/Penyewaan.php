@@ -5,5 +5,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class Penyewaan extends Model{
     protected $table = 'penyewaan';
-    protected $fillable = ['tanggal_pengajuan', 'penanggung_jawab', 'asal_surat', 'jenis_surat', 'type', 'tanggal_mulai', 'tanggal_selesai', 'lampiran'];
+    protected $fillable = ['kegiatan', 'tanggal_pengajuan', 'penanggung_jawab', 'asal_surat', 'jenis_surat', 'type', 'tanggal_mulai', 'tanggal_selesai', 'lampiran'];
 }

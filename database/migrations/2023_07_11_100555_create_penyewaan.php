@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('penyewaan', function (Blueprint $table) {
             $table->id();
+            $table->string('kegiatan');
             $table->date('tanggal_pengajuan');
             $table->string('penanggung_jawab');
             $table->string('asal_surat');
@@ -20,7 +21,7 @@ return new class extends Migration
             $table->enum('type', ['mobil', 'aula']);
             $table->dateTime('tanggal_mulai');
             $table->dateTime('tanggal_selesai');
-            $table->string('lampiran');
+            $table->string('lampiran')->nullable();
             $table->timestamps();
         });
     }
