@@ -12,6 +12,9 @@ class Pagination {
     $totalPage = ceil($model::count() / intval($params['limit']));
     $totalRows = $model::count();
     $exist = $model::offset($offset)->limit($params['limit'])->get();
+    if($model == 'App\\Models\\Penyewaan'){
+      $exist = DB::table('penyewaan')->offset($offset)->limit($params['limit'])->orderBy('tanggal_mulai')->get();
+    }
 
     if (!$exist) {
       return HttpResponse::not_found();
@@ -23,6 +26,7 @@ class Pagination {
       'total_page' => $totalPage,
       'total_rows' => $totalRows,
       'data' => $exist,
+      'model' => $model,
     ];
 
     return HttpResponse::success($result);

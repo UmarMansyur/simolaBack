@@ -7,6 +7,7 @@ use App\Models\Penyewaan;
 use App\Utils\HttpResponse;
 use App\Utils\Pagination;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PenyewaanController extends Controller
 {
@@ -43,16 +44,30 @@ class PenyewaanController extends Controller
   {
     try {
       $this->validate($request, $this->rules);
-      $exist = Penyewaan::where(function ($query) use ($request) {
-        $query->where('tanggal_mulai', '<=', $request->tanggal_mulai)
-          ->where('tanggal_selesai', '>=', $request->tanggal_mulai);
-      })
-        ->orWhere(function ($query) use ($request) {
-          $query->where('tanggal_mulai', '<=', $request->tanggal_selesai)
-            ->where('tanggal_selesai', '>=', $request->tanggal_selesai);
-        })
-        ->where('jenis_surat', $request->jenis_surat)
-        ->first();
+      if ($request->tanggal_mulai >= $request->tanggal_selesai) {
+        return HttpResponse::error('Tanggal mulai tidak boleh lebih besar dari tanggal selesai');
+      }
+      $exist = DB::select("
+      SELECT *
+      FROM penyewaan
+      WHERE type = ?
+          AND (
+              (? >= tanggal_mulai AND ? < tanggal_selesai)
+              OR (? > tanggal_mulai AND ? <= tanggal_selesai)
+              OR (tanggal_mulai >= ? AND tanggal_selesai <= ?)
+          )
+          AND (tanggal_pengajuan >= ? AND tanggal_pengajuan <= ?)
+  ", [
+        $request->type,
+        $request->tanggal_mulai,
+        $request->tanggal_mulai,
+        $request->tanggal_selesai,
+        $request->tanggal_selesai,
+        $request->tanggal_mulai,
+        $request->tanggal_selesai,
+        $request->tanggal_pengajuan,
+        $request->tanggal_selesai
+      ]);
 
       if ($exist) {
         return HttpResponse::error('Penyewaan sudah ada');
