@@ -22,7 +22,10 @@ class PenyewaanController extends Controller
       'type' => 'required|string',
       'tanggal_mulai' => 'required|date',
       'tanggal_selesai' => 'required|date',
-      'lampiran' => 'file|mimes:pdf,doc,docx'
+      'lampiran' => 'file|mimes:pdf,doc,docx',
+      'status' => 'string',
+      'tanggal_persetujuan_bau' => 'date',
+      'tanggal_persetujuan_kepala_bagian_umum' => 'date'
     ];
     $this->middleware('auth', ['except' => ['index', 'show']]);
   }
@@ -85,7 +88,10 @@ class PenyewaanController extends Controller
         'type' => $request->type,
         'tanggal_mulai' => $request->tanggal_mulai,
         'tanggal_selesai' => $request->tanggal_selesai,
-        'lampiran' => $lampiran
+        'lampiran' => $lampiran,
+        'status' => $request->status,
+        'tanggal_persetujuan_bau' => $request->tanggal_persetujuan_bau ? $request->tanggal_persetujuan_bau : null,
+        'tanggal_persetujuan_kepala_bagian_umum' => $request->tanggal_persetujuan_kepala_bagian_umum ? $request->tanggal_persetujuan_kepala_bagian_umum : null
       ]);
       return HttpResponse::success($response, 'Penyewaan berhasil ditambahkan');
     } catch (\Throwable $th) {
@@ -117,8 +123,36 @@ class PenyewaanController extends Controller
       }
 
       $file = $request->file('lampiran');
-      $this->deletedFile($exist->lampiran);
-      $lampiran = $this->uploadFile($file);
+      $lampiran = $exist->lampiran;
+      if($file) {
+        $this->deletedFile($exist->lampiran);
+        $lampiran = $this->uploadFile($file);
+      }
+
+      if($exist->status == 'Selesai') {
+        return HttpResponse::error('Penyewaan sudah selesai');
+      }
+
+      if ($request->tanggal_mulai >= $request->tanggal_selesai) {
+        return HttpResponse::error('Tanggal mulai tidak boleh lebih besar dari tanggal selesai');
+      }
+
+      // jika disetujui bau, maka tidak bisa diubah lagi
+      if ($exist->status == 'Disetujui BAU') {
+        return HttpResponse::error('Penyewaan sudah disetujui BAU');
+      }
+
+      if ($exist->status == 'Disetujui Kepala Bagian Umum') {
+        return HttpResponse::error('Penyewaan sudah disetujui Kepala Bagian Umum');
+      }
+
+      if($exist->status == 'Ditolak BAU') {
+        return HttpResponse::error('Penyewaan sudah ditolak BAU');
+      }
+
+      if($exist->status == 'Ditolak Kepala Bagian Umum') {
+        return HttpResponse::error('Penyewaan sudah ditolak Kepala Bagian Umum');
+      }
 
       $exist->update([
         'tanggal_pengajuan' => $request->tanggal_pengajuan,
@@ -129,7 +163,10 @@ class PenyewaanController extends Controller
         'tanggal_mulai' => $request->tanggal_mulai,
         'tanggal_selesai' => $request->tanggal_selesai,
         'lampiran' => $lampiran,
-        'kegiatan' => $request->kegiatan
+        'kegiatan' => $request->kegiatan,
+        'status' => $request->status,
+        'tanggal_persetujuan_bau' => $request->tanggal_persetujuan_bau ? $request->tanggal_persetujuan_bau : null,
+        'tanggal_persetujuan_kepala_bagian_umum' => $request->tanggal_persetujuan_kepala_bagian_umum ? $request->tanggal_persetujuan_kepala_bagian_umum : null
       ]);
       return HttpResponse::success($exist, 'Penyewaan berhasil diubah');
     } catch (\Throwable $th) {

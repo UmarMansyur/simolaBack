@@ -20,7 +20,7 @@ class User extends Model implements JWTSubject, AuthenticatableContract, Authori
      */
     protected $table = 'admin';
     protected $fillable = [
-        'name', 'username', 'thumbnail'
+        'name', 'username', 'thumbnail', 
     ];
 
     /**

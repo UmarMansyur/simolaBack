@@ -19,6 +19,9 @@ return new class extends Migration
             $table->string('asal_surat');
             $table->string('jenis_surat');
             $table->enum('type', ['mobil', 'aula']);
+            $table->enum('status', ['Menunggu Persetujuan', 'Disetujui BAU', 'Ditolak BAU', 'Disetujui Kepala Bagian Umum', 'Ditolak Kepala Bagian Umum', 'Selesai'])->default('Menunggu Persetujuan');
+            $table->date('tanggal_persetujuan_bau')->nullable();
+            $table->date('tanggal_persetujuan_kepala_bagian_umum')->nullable();
             $table->dateTime('tanggal_mulai');
             $table->dateTime('tanggal_selesai');
             $table->string('lampiran')->nullable();

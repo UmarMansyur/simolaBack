@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('username');
+            $table->enum('role', ['Kepala Bagian Umum', 'Biro Administrasi Umum'])->default('Biro Administrasi Umum');
             $table->string('password');
             $table->string('thumbnail');
             $table->timestamps();
