@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::create('penyewaan', function (Blueprint $table) {
             $table->id();
+            $table->string('nomor_induk');
+            $table->string('type_user');
             $table->string('kegiatan');
             $table->date('tanggal_pengajuan');
             $table->string('penanggung_jawab');
@@ -24,6 +26,8 @@ return new class extends Migration
             $table->date('tanggal_persetujuan_kepala_bagian_umum')->nullable();
             $table->dateTime('tanggal_mulai');
             $table->dateTime('tanggal_selesai');
+            $table->text('disposisi')->nullable();
+            $table->text('keterangan')->nullable();
             $table->string('lampiran')->nullable();
             $table->timestamps();
         });

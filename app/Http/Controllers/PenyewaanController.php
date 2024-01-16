@@ -43,6 +43,8 @@ class PenyewaanController extends Controller
     }
   }
 
+  
+
   public function store(Request $request)
   {
     try {
