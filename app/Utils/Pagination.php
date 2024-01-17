@@ -11,7 +11,8 @@ class Pagination {
     $offset = intval($params['page'] - 1) * intval($params['limit']);
     // $totalPage = ceil($model::count() / intval($params['limit']));
     // $totalRows = $model::count();
-    $exist = null;
+    $exist = $model;
+
     if($params['status']) {
       $exist = $model::where('status', $params['status']);
     }
@@ -19,10 +20,9 @@ class Pagination {
       $exist = $model::where('type', $params['type']);
     }
     $exist = $exist->offset($offset)->limit($params['limit']);
+
     if($model == 'App\\Models\\Penyewaan'){
       $exist = $exist->orderBy('tanggal_pengajuan', 'desc')->get();
-    } else {
-      $exist = $exist->get();
     }
 
     $totalPage = null;
@@ -88,6 +88,7 @@ class Pagination {
     if(request()->get('status')) {
       $totalPage = $totalPage->where('status', request()->get('status'));
     }
+
     if(request()->get('nomor_induk')) {
       $totalPage = $totalPage->where('type', request()->get('type'));
     }

@@ -25,10 +25,36 @@ class AulaController extends Controller
   {
     try {
       $request = request()->all();
-      if(isset($request['search'])) {
-        return Pagination::initWithSearch(Aula::class, $request, ['nama', 'kapasitas', 'lokasi', 'deskripsi', 'status']);
+      $request = request()->all();
+      $limit = $request['limit'] ?? 10;
+      $page = $request['page'] ?? 1;
+      $offset = intval($page - 1) * intval($limit);
+      
+      $exist = Aula::offset($offset)->limit($limit)->get();
+      $totalRows = Aula::count();
+      if(!$exist) {
+        return HttpResponse::not_found();
       }
-      return Pagination::init(Aula::class, request()->all());
+
+     if(!empty($request['search'])) {
+        $exist = Aula::where('merk', 'like', '%'.$request['search'].'%')
+        ->orWhere('nama', 'like', '%'.$request['search'].'%')
+        ->orWhere('kapasitas', 'like', '%'.$request['search'].'%')
+        ->orWhere('lokasi', 'like', '%'.$request['search'].'%')
+        ->orWhere('deskripsi', 'like', '%'.$request['search'].'%')
+        ->orWhere('status', 'like', '%'.$request['search'].'%')
+        ->offset($offset)->limit($limit)->get();
+        $totalRows = $exist->count();
+      }
+      $totalPage = ceil($totalRows / intval($limit));
+      $result = [
+        'page' => intval($page),
+        'limit' => intval($limit),
+        'total_page' => $totalPage,
+        'total_rows' => $totalRows,
+        'data' => $exist
+      ];
+      return HttpResponse::success($result);
     } catch (\Throwable $th) {
       return HttpResponse::error($th->getMessage());
     }

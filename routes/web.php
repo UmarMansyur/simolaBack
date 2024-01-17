@@ -51,6 +51,7 @@ $router->group(['prefix' => 'penyewaan'], function () use ($router) {
     $router->get('/', 'PenyewaanController@index');
     $router->post('/', 'PenyewaanController@store');
     $router->get('/{id}', 'PenyewaanController@show');
+    $router->post('/status/{id}', 'PenyewaanController@statusPeminjaman');
     $router->post('/{id}', 'PenyewaanController@update');
     $router->delete('/{id}', 'PenyewaanController@destroy');
 });

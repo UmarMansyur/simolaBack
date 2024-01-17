@@ -34,10 +34,84 @@ class PenyewaanController extends Controller
   {
     try {
       $request = request()->all();
-      if (isset($request['search'])) {
-        return Pagination::initWithSearch(Penyewaan::class, $request, ['kegiatan', 'tanggal_pengajuan', 'penanggung_jawab', 'asal_surat', 'jenis_surat', 'type', 'tanggal_mulai', 'tanggal_selesai', 'lampiran']);
+      $request = request()->all();
+      $limit = $request['limit'] ?? 10;
+      $page = $request['page'] ?? 1;
+      $offset = intval($page - 1) * intval($limit);
+
+      
+      $exist = Penyewaan::offset($offset)->limit($limit)->get();
+      $totalRows = Penyewaan::count();
+      if(!$exist) {
+        return HttpResponse::not_found();
       }
-      return Pagination::init(Penyewaan::class, request()->all());
+
+      
+     if(!empty($request['search'])) {
+        $exist = Penyewaan::where('nomor_induk', 'like', '%'.$request['search'].'%')
+        ->orWhere('type_user', 'like', '%'.$request['search'].'%')
+        ->orWhere('kegiatan', 'like', '%'.$request['search'].'%')
+        ->orWhere('tanggal_pengajuan', 'like', '%'.$request['search'].'%')
+        ->orWhere('penanggung_jawab', 'like', '%'.$request['search'].'%')
+        ->orWhere('asal_status', 'like', '%'.$request['search'].'%')
+        ->orWhere('jenis_surat', 'like', '%'.$request['search'].'%')
+        ->orWhere('type', 'like', '%'.$request['search'].'%')
+        ->orWhere('tanggal_persetujuan_bau', 'like', '%'.$request['search'].'%')
+        ->offset($offset)->limit($limit)->get();
+        $totalRows = $exist->count();
+      }
+
+      if(!empty($request['status'])) {
+        $exist = Penyewaan::where('status', $request['status'])->offset($offset)->limit($limit)->get();
+        $totalRows = $exist->count();
+        if($request['status'] == 'sudah') {
+          $exist = Penyewaan::where('status', '!=', 'Menunggu Persetujuan')->offset($offset)->limit($limit)->get();
+          $totalRows = $exist->count();
+        }
+      }
+      
+      if(!empty($request['type']) && !empty($request['status'])) {
+        $exist = Penyewaan::where('type', $request['type'])->where('status', $request['status'])->offset($offset)->limit($limit)->get();
+        $totalRows = $exist->count();
+        if($request['status'] == 'sudah') {
+          $exist = Penyewaan::where('type', $request['type'])->where('status', '!=', 'Menunggu Persetujuan')->offset($offset)->limit($limit)->get();
+          $totalRows = $exist->count();
+        }
+      }
+
+      if(!empty($request['status']) && !empty($request['nomor_induk'])) {
+        $exist = Penyewaan::where('status', $request['status'])->where('nomor_induk', $request['nomor_induk'])->offset($offset)->limit($limit)->get();
+        $totalRows = $exist->count(); 
+
+        if($request['status'] == 'sudah') {
+          $exist = Penyewaan::where('status', '!=', 'Menunggu Persetujuan')->where('nomor_induk', $request['nomor_induk'])->offset($offset)->limit($limit)->get();
+          $totalRows = $exist->count();
+        }
+      }
+
+
+      if(!empty($request['type']) && !empty($request['status']) && !empty($request['nomor_induk'])) {
+        $exist = Penyewaan::where('type', $request['type'])->where('status', $request['status'])->where('nomor_induk', $request['nomor_induk'])->offset($offset)->limit($limit)->get();
+        $totalRows = $exist->count();
+        if($request['status'] == 'sudah') {
+          $exist = Penyewaan::where('type', $request['type'])->where('status', '!=', 'Menunggu Persetujuan')->where('nomor_induk', $request['nomor_induk'])->offset($offset)->limit($limit)->get();
+          $totalRows = $exist->count();
+        }
+      }
+
+
+
+
+    
+      $totalPage = ceil($totalRows / intval($limit));
+      $result = [
+        'page' => intval($page),
+        'limit' => intval($limit),
+        'total_page' => $totalPage,
+        'total_rows' => $totalRows,
+        'data' => $exist
+      ];
+      return HttpResponse::success($result);
     } catch (\Throwable $th) {
       return HttpResponse::not_found($th->getMessage());
     }
@@ -61,7 +135,7 @@ class PenyewaanController extends Controller
               OR (? > tanggal_mulai AND ? <= tanggal_selesai)
               OR (tanggal_mulai >= ? AND tanggal_selesai <= ?)
           )
-          AND (tanggal_pengajuan >= ? AND tanggal_pengajuan <= ?)
+          AND (tanggal_pengajuan >= ? AND tanggal_pengajuan <= ?) AND jenis_surat = ?
   ", [
         $request->type,
         $request->tanggal_mulai,
@@ -71,7 +145,8 @@ class PenyewaanController extends Controller
         $request->tanggal_mulai,
         $request->tanggal_selesai,
         $request->tanggal_pengajuan,
-        $request->tanggal_selesai
+        $request->tanggal_selesai,
+        $request->jenis_surat
       ]);
 
       if ($exist) {
@@ -82,6 +157,8 @@ class PenyewaanController extends Controller
       $lampiran = $this->uploadFile($file);
 
       $response = Penyewaan::create([
+        'nomor_induk' => $request->nomor_induk,
+        'type_user' => $request->type_user,
         'kegiatan' => $request->kegiatan,
         'tanggal_pengajuan' => $request->tanggal_pengajuan,
         'penanggung_jawab' => $request->penanggung_jawab,
@@ -111,6 +188,67 @@ class PenyewaanController extends Controller
       return HttpResponse::success($exist);
     } catch (\Throwable $th) {
       return HttpResponse::error($th->getMessage());
+    }
+  }
+
+  public function statusPeminjaman(Request $request, $id) {
+    try {
+      $exist = Penyewaan::find($id);
+      if (!$exist) {
+        return HttpResponse::not_found();
+      }
+
+      if($exist->status == 'Selesai') {
+        return HttpResponse::error('Penyewaan sudah selesai');
+      }
+
+
+      if ($exist->status == 'Disetujui Kepala Bagian Umum') {
+        return HttpResponse::error('Penyewaan sudah disetujui Kepala Bagian Umum');
+      }
+
+      if($exist->status == 'Ditolak BAU') {
+        return HttpResponse::error('Penyewaan sudah ditolak BAU');
+      }
+
+      if($exist->status == 'Ditolak Kepala Bagian Umum') {
+        return HttpResponse::error('Penyewaan sudah ditolak Kepala Bagian Umum');
+      }
+
+      if($request->status == 'Disetujui BAU') {
+        $exist->update([
+          'status' => $request->status,
+          'disposisi' => $request->keterangan,
+          'tanggal_persetujuan_bau' => date('Y-m-d')
+        ]);
+      }
+
+      if($request->status == 'Disetujui Kepala Bagian Umum') {
+        $exist->update([
+          'status' => $request->status,
+          'tanggal_persetujuan_kepala_bagian_umum' => date('Y-m-d')
+        ]);
+      }
+
+      if($request->status == 'Ditolak BAU') {
+        $exist->update([
+          'status' => $request->status,
+          'keterangan' => $request->keterangan,
+          'tanggal_persetujuan_bau' => null
+        ]);
+      }
+
+      if($request->status == 'Ditolak Kepala Bagian Umum') {
+        $exist->update([
+          'status' => $request->status,
+          'keterangan' => $request->keterangan,
+          'tanggal_persetujuan_kepala_bagian_umum' => null
+        ]);
+      }
+
+      return HttpResponse::success($exist, 'Status penyewaan berhasil diubah');
+    } catch (\Throwable $th) {
+      //throw $th;
     }
   }
 
